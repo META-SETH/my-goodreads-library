@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=1">
+<meta name="theme-color" content="#1a1a2e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>My Goodreads Library</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📚</text></svg>">
+<link href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,400;7..72,500;7..72,700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg-primary:#0f0f1a;
+  --bg-secondary:#1a1a2e;
+  --bg-card:#16213e;
+  --bg-card-hover:#1e2d50;
+  --text-primary:#e8e6e3;
+  --text-secondary:#a0a0b0;
+  --text-muted:#6b6b80;
+  --accent:#e2b340;
+  --accent-dim:#b8922e;
+  --accent-glow:rgba(226,179,64,0.15);
+  --shelf-read:#4ecca3;
+  --shelf-reading:#e2b340;
+  --shelf-toread:#6c7bba;
+  --border:#2a2a40;
+  --radius:6px;
+  --shadow:0 2px 12px rgba(0,0,0,0.4);
+  --font-display:'Literata', Georgia, serif;
+  --font-body:'DM Sans', system-ui, sans-serif;
+}
+html{font-size:15px;scroll-behavior:smooth}
+body{
+  background:var(--bg-primary);
+  color:var(--text-primary);
+  font-family:var(--font-body);
+  line-height:1.6;
+  min-height:100vh;
+  overflow-x:hidden;
+}
+::selection{background:var(--accent);color:var(--bg-primary)}
+::-webkit-scrollbar{width:8px}
+::-webkit-scrollbar-track{background:var(--bg-primary)}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+::-webkit-scrollbar-thumb:hover{background:var(--text-muted)}
+
+/* HEADER */
+.site-header{
+  background:linear-gradient(135deg, var(--bg-secondary) 0%, #0d1b2a 100%);
+  border-bottom:1px solid var(--border);
+  padding:1.5rem 2rem;
+  position:sticky;top:0;z-index:100;
+  backdrop-filter:blur(12px);
+}
+.header-inner{
+  max-width:1400px;margin:0 auto;
+  display:flex;align-items:center;justify-content:space-between;
+  flex-wrap:wrap;gap:1rem;
+}
+.site-title{
+  font-family:var(--font-display);
+  font-size:1.5rem;font-weight:700;
+  color:var(--text-primary);
+  letter-spacing:-0.02em;
+}
+.site-title span{color:var(--accent)}
+.header-stats{display:flex;gap:1.25rem;flex-wrap:wrap;align-items:center}
+.stat{
+  font-size:0.8rem;color:var(--text-secondary);
+  display:flex;align-items:center;gap:0.35rem;
+}
+.stat strong{color:var(--text-primary);font-weight:600;font-size:0.95rem}
+.stat-dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+.stat-dot.read{background:var(--shelf-read)}
+.stat-dot.reading{background:var(--shelf-reading)}
+.stat-dot.toread{background:var(--shelf-toread)}
+
+/* CONTROLS */
+.controls{
+  max-width:1400px;margin:0 auto;
+  padding:1.25rem 2rem;
+  display:flex;flex-wrap:wrap;gap:0.75rem;align-items:center;
+}
+.search-box{
+  flex:1;min-width:220px;position:relative;
+}
+.search-box input{
+  width:100%;padding:0.6rem 1rem 0.6rem 2.4rem;
+  background:var(--bg-secondary);border:1px solid var(--border);
+  border-radius:var(--radius);color:var(--text-primary);
+  font-family:var(--font-body);font-size:0.9rem;
+  transition:border-color 0.2s;
+}
+.search-box input:focus{outline:none;border-color:var(--accent)}
+.search-box input::placeholder{color:var(--text-muted)}
+.search-icon{
+  position:absolute;left:0.75rem;top:50%;transform:translateY(-50%);
+  color:var(--text-muted);font-size:0.9rem;pointer-events:none;
+}
+select,.btn{
+  padding:0.6rem 1rem;
+  background:var(--bg-secondary);border:1px solid var(--border);
+  border-radius:var(--radius);color:var(--text-primary);
+  font-family:var(--font-body);font-size:0.85rem;
+  cursor:pointer;transition:all 0.2s;
+}
+select:hover,.btn:hover{border-color:var(--accent)}
+select:focus,.btn:focus{outline:none;border-color:var(--accent)}
+.btn.active{background:var(--accent);color:var(--bg-primary);border-color:var(--accent);font-weight:600}
+.shelf-filters{display:flex;gap:0.4rem;flex-wrap:wrap}
+.shelf-btn{font-size:0.8rem;padding:0.4rem 0.85rem;border-radius:20px}
+.shelf-btn .count{opacity:0.7;margin-left:0.3rem;font-size:0.75rem}
+.view-toggle{display:flex;gap:0;margin-left:auto}
+.view-toggle .btn{border-radius:0;border-right:none;padding:0.6rem 0.8rem}
+.view-toggle .btn:first-child{border-radius:var(--radius) 0 0 var(--radius)}
+.view-toggle .btn:last-child{border-radius:0 var(--radius) var(--radius) 0;border-right:1px solid var(--border)}
+.results-count{font-size:0.8rem;color:var(--text-muted);width:100%;padding-top:0.25rem}
+
+/* GRID VIEW */
+.library-grid{
+  max-width:1400px;margin:0 auto;padding:0 2rem 3rem;
+  display:grid;
+  grid-template-columns:repeat(auto-fill, minmax(140px, 1fr));
+  gap:1.25rem;
+}
+.book-card{
+  position:relative;cursor:pointer;
+  border-radius:var(--radius);overflow:hidden;
+  transition:transform 0.25s ease, box-shadow 0.25s ease;
+}
+.book-card:hover{transform:translateY(-4px);box-shadow:0 8px 24px rgba(0,0,0,0.5)}
+.book-cover{
+  width:100%;aspect-ratio:2/3;
+  background:var(--bg-card);
+  display:flex;align-items:center;justify-content:center;
+  overflow:hidden;position:relative;
+}
+.book-cover img{width:100%;height:100%;object-fit:cover}
+.book-cover .fallback{
+  padding:1rem;text-align:center;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  height:100%;
+  background:linear-gradient(145deg, var(--bg-card) 0%, #1a2744 100%);
+}
+.fallback .fb-title{
+  font-family:var(--font-display);font-size:0.75rem;
+  font-weight:700;line-height:1.3;color:var(--text-primary);
+  margin-bottom:0.4rem;
+  display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden;
+}
+.fallback .fb-author{font-size:0.65rem;color:var(--text-secondary)}
+.book-card .shelf-badge{
+  position:absolute;top:6px;right:6px;
+  width:10px;height:10px;border-radius:50%;
+  border:1.5px solid rgba(0,0,0,0.5);
+}
+.book-card .rating-badge{
+  position:absolute;bottom:0;left:0;right:0;
+  background:linear-gradient(transparent, rgba(0,0,0,0.85));
+  padding:0.5rem 0.4rem 0.35rem;
+  font-size:0.7rem;color:var(--accent);
+  letter-spacing:1px;
+}
+.book-card .card-title{
+  padding:0.5rem 0.25rem 0.1rem;
+  font-size:0.72rem;font-weight:600;
+  line-height:1.25;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.book-card .card-author{
+  padding:0 0.25rem 0.5rem;
+  font-size:0.65rem;color:var(--text-secondary);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+
+/* LIST VIEW */
+.library-list{
+  max-width:1400px;margin:0 auto;padding:0 2rem 3rem;
+  display:flex;flex-direction:column;gap:2px;
+}
+.list-item{
+  display:grid;
+  grid-template-columns:50px 1fr 160px 80px 80px 100px;
+  align-items:center;gap:1rem;
+  padding:0.65rem 1rem;
+  background:var(--bg-secondary);
+  border-radius:var(--radius);
+  cursor:pointer;
+  transition:background 0.15s;
+  font-size:0.85rem;
+}
+.list-item:hover{background:var(--bg-card-hover)}
+.list-item .li-cover{
+  width:50px;height:70px;border-radius:3px;overflow:hidden;
+  background:var(--bg-card);flex-shrink:0;
+}
+.list-item .li-cover img{width:100%;height:100%;object-fit:cover}
+.list-item .li-info{min-width:0}
+.list-item .li-title{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.list-item .li-author{font-size:0.8rem;color:var(--text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.list-item .li-shelf{font-size:0.75rem;text-transform:capitalize}
+.list-item .li-pages{font-size:0.8rem;color:var(--text-secondary);text-align:right}
+.list-item .li-rating{color:var(--accent);font-size:0.8rem;text-align:center}
+.list-item .li-date{font-size:0.75rem;color:var(--text-muted);text-align:right}
+
+/* DETAIL PANEL */
+.overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:200;
+  opacity:0;pointer-events:none;transition:opacity 0.3s;
+}
+.overlay.open{opacity:1;pointer-events:all}
+.detail-panel{
+  position:fixed;top:0;right:-480px;bottom:0;width:480px;max-width:100vw;
+  background:var(--bg-secondary);z-index:201;
+  overflow-y:auto;transition:right 0.35s ease;
+  border-left:1px solid var(--border);
+}
+.detail-panel.open{right:0}
+.detail-close{
+  position:absolute;top:1rem;right:1rem;
+  background:none;border:none;color:var(--text-secondary);
+  font-size:1.5rem;cursor:pointer;z-index:10;
+  width:36px;height:36px;display:flex;align-items:center;justify-content:center;
+  border-radius:50%;transition:all 0.2s;
+}
+.detail-close:hover{background:var(--bg-card);color:var(--text-primary)}
+.detail-cover{
+  width:100%;height:320px;
+  background:linear-gradient(145deg, var(--bg-card) 0%, #1a2744 100%);
+  display:flex;align-items:center;justify-content:center;
+  overflow:hidden;
+}
+.detail-cover img{max-height:100%;max-width:200px;object-fit:contain;
+  box-shadow:0 4px 24px rgba(0,0,0,0.5);border-radius:4px;
+}
+.detail-cover .fallback{padding:2rem;text-align:center}
+.detail-cover .fallback .fb-title{font-size:1.1rem;margin-bottom:0.5rem}
+.detail-cover .fallback .fb-author{font-size:0.85rem}
+.detail-body{padding:1.5rem}
+.detail-body h2{
+  font-family:var(--font-display);font-size:1.35rem;
+  font-weight:700;line-height:1.3;margin-bottom:0.25rem;
+}
+.detail-body .d-author{font-size:1rem;color:var(--accent-dim);margin-bottom:1rem}
+.detail-body .d-meta{display:flex;flex-wrap:wrap;gap:0.5rem;margin-bottom:1.25rem}
+.d-tag{
+  display:inline-flex;align-items:center;gap:0.3rem;
+  background:var(--bg-card);padding:0.3rem 0.7rem;
+  border-radius:20px;font-size:0.75rem;color:var(--text-secondary);
+}
+.d-tag .label{color:var(--text-muted)}
+.detail-body .d-rating{margin-bottom:1.25rem}
+.d-rating .stars{font-size:1.3rem;letter-spacing:2px;color:var(--accent)}
+.d-rating .stars .empty{color:var(--border)}
+.detail-body .d-section{margin-bottom:1rem}
+.d-section .d-label{font-size:0.7rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:0.3rem}
+.d-section .d-value{font-size:0.9rem;color:var(--text-secondary);line-height:1.5}
+.d-shelves{display:flex;flex-wrap:wrap;gap:0.4rem}
+.d-shelf{
+  padding:0.25rem 0.65rem;border-radius:12px;
+  font-size:0.72rem;font-weight:600;text-transform:capitalize;
+  border:1px solid var(--border);color:var(--text-secondary);
+}
+.d-shelf.read{border-color:var(--shelf-read);color:var(--shelf-read)}
+.d-shelf.currently-reading{border-color:var(--shelf-reading);color:var(--shelf-reading)}
+.d-shelf.to-read{border-color:var(--shelf-toread);color:var(--shelf-toread)}
+.gr-link{
+  display:inline-flex;align-items:center;gap:0.4rem;
+  margin-top:1rem;padding:0.5rem 1rem;
+  background:var(--bg-card);border:1px solid var(--border);
+  border-radius:var(--radius);color:var(--text-secondary);
+  text-decoration:none;font-size:0.8rem;
+  transition:all 0.2s;
+}
+.gr-link:hover{border-color:var(--accent);color:var(--accent)}
+
+/* EMPTY STATE */
+.empty-state{
+  text-align:center;padding:4rem 2rem;
+  color:var(--text-muted);
+}
+.empty-state .emoji{font-size:3rem;margin-bottom:1rem}
+.empty-state p{font-size:1rem}
+
+/* FOOTER */
+.site-footer{
+  text-align:center;padding:2rem;
+  border-top:1px solid var(--border);
+  font-size:0.75rem;color:var(--text-muted);
+}
+.site-footer a{color:var(--accent-dim);text-decoration:none}
+.site-footer a:hover{color:var(--accent)}
+
+/* LOADING */
+.loading-cover{
+  width:100%;height:100%;
+  background:var(--bg-card);
+  animation:pulse 1.5s ease-in-out infinite;
+}
+@keyframes pulse{
+  0%,100%{opacity:1}
+  50%{opacity:0.5}
+}
+
+/* RESPONSIVE */
+@media(max-width:768px){
+  .site-header{padding:1rem}
+  .header-inner{flex-direction:column;align-items:flex-start}
+  .controls{padding:1rem;flex-direction:column}
+  .search-box{min-width:100%}
+  .shelf-filters{width:100%}
+  .view-toggle{margin-left:0}
+  .library-grid{padding:0 1rem 2rem;grid-template-columns:repeat(auto-fill, minmax(110px, 1fr));gap:0.75rem}
+  .list-item{grid-template-columns:40px 1fr 60px;font-size:0.8rem}
+  .list-item .li-shelf,.list-item .li-pages,.list-item .li-date{display:none}
+  .detail-panel{width:100%}
+  .results-count{text-align:center}
+}
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="header-inner">
+    <div class="site-title">📚 My <span>Goodreads</span> Library</div>
+    <div class="header-stats" id="headerStats"></div>
+  </div>
+</header>
+
+<div class="controls" id="controls">
+  <div class="search-box">
+    <span class="search-icon">⌕</span>
+    <input type="text" id="searchInput" placeholder="Search titles, authors, publishers…">
+  </div>
+  <div class="shelf-filters" id="shelfFilters"></div>
+  <select id="sortSelect">
+    <option value="dateAdded-desc">Date Added (newest)</option>
+    <option value="dateAdded-asc">Date Added (oldest)</option>
+    <option value="title-asc">Title (A→Z)</option>
+    <option value="title-desc">Title (Z→A)</option>
+    <option value="author-asc">Author (A→Z)</option>
+    <option value="author-desc">Author (Z→A)</option>
+    <option value="myRating-desc">My Rating (high→low)</option>
+    <option value="pages-desc">Pages (most)</option>
+    <option value="pages-asc">Pages (fewest)</option>
+    <option value="yearOriginal-asc">Year Published (oldest)</option>
+    <option value="yearOriginal-desc">Year Published (newest)</option>
+    <option value="dateRead-desc">Date Read (newest)</option>
+  </select>
+  <div class="view-toggle">
+    <button class="btn active" id="gridBtn" onclick="setView('grid')" title="Grid view">▦</button>
+    <button class="btn" id="listBtn" onclick="setView('list')" title="List view">☰</button>
+  </div>
+  <div class="results-count" id="resultsCount"></div>
+</div>
+
+<main id="libraryContainer"></main>
+
+<div class="overlay" id="overlay" onclick="closeDetail()"></div>
+<div class="detail-panel" id="detailPanel">
+  <button class="detail-close" onclick="closeDetail()">✕</button>
+  <div id="detailContent"></div>
+</div>
+
+<footer class="site-footer">
+  Gallery generated from <a href="https://www.goodreads.com/user/show/112315860-mr-meta-seth" target="_blank">Goodreads</a> export
+  · Built with care, June 2026
+</footer>
+
+<script src="data/library.js"></script>
+<script>
+(function() {
+  'use strict';
+
+  const books = window.libraryData || [];
+  let currentView = 'grid';
+  let currentShelf = 'all';
+  let currentSort = 'dateAdded-desc';
+  let searchQuery = '';
+  const coverCache = {};
+
+  // --- Stats ---
+  function renderStats() {
+    const read = books.filter(b => b.shelf === 'read').length;
+    const reading = books.filter(b => b.shelf === 'currently-reading').length;
+    const toRead = books.filter(b => b.shelf === 'to-read').length;
+    const rated = books.filter(b => b.myRating).length;
+    const avgRating = rated > 0
+      ? (books.filter(b=>b.myRating).reduce((a,b)=>a+b.myRating,0)/rated).toFixed(1)
+      : '—';
+    document.getElementById('headerStats').innerHTML = `
+      <div class="stat"><span class="stat-dot read"></span><strong>${read}</strong> Read</div>
+      <div class="stat"><span class="stat-dot reading"></span><strong>${reading}</strong> Reading</div>
+      <div class="stat"><span class="stat-dot toread"></span><strong>${toRead}</strong> To Read</div>
+      <div class="stat"><strong>${books.length}</strong> Total</div>
+      <div class="stat"><strong>${avgRating}</strong> Avg Rating</div>
+    `;
+  }
+
+  // --- Shelf Filters ---
+  function renderShelfFilters() {
+    const shelfCounts = {};
+    const customShelves = new Set();
+    books.forEach(b => {
+      shelfCounts[b.shelf] = (shelfCounts[b.shelf]||0)+1;
+      b.shelves.forEach(s => {
+        if (s !== b.shelf && s !== 'to-read' && s !== 'read' && s !== 'currently-reading') {
+          customShelves.add(s);
+          shelfCounts[s] = (shelfCounts[s]||0)+1;
+        }
+      });
+    });
+    const mainShelves = [
+      {key:'all',label:'All',count:books.length},
+      {key:'read',label:'Read',count:shelfCounts['read']||0},
+      {key:'currently-reading',label:'Reading',count:shelfCounts['currently-reading']||0},
+      {key:'to-read',label:'To Read',count:shelfCounts['to-read']||0},
+    ];
+    const custom = [...customShelves].sort().map(s => ({key:s,label:s.replace(/-/g,' '),count:shelfCounts[s]||0}));
+    const all = [...mainShelves,...custom];
+    
+    document.getElementById('shelfFilters').innerHTML = all.map(s =>
+      `<button class="btn shelf-btn ${currentShelf===s.key?'active':''}" onclick="filterShelf('${s.key}')">${s.label}<span class="count">${s.count}</span></button>`
+    ).join('');
+  }
+
+  // --- Filter & Sort ---
+  function getFilteredBooks() {
+    let filtered = books;
+    if (currentShelf !== 'all') {
+      filtered = filtered.filter(b => b.shelf === currentShelf || b.shelves.includes(currentShelf));
+    }
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      filtered = filtered.filter(b =>
+        b.title.toLowerCase().includes(q) ||
+        b.author.toLowerCase().includes(q) ||
+        (b.additionalAuthors||'').toLowerCase().includes(q) ||
+        (b.publisher||'').toLowerCase().includes(q)
+      );
+    }
+    const [field, dir] = currentSort.split('-');
+    const mult = dir === 'asc' ? 1 : -1;
+    filtered.sort((a, b) => {
+      let va = a[field], vb = b[field];
+      if (va == null) va = dir==='asc'? Infinity : -Infinity;
+      if (vb == null) vb = dir==='asc'? Infinity : -Infinity;
+      if (field === 'title' || field === 'author') {
+        va = String(va).toLowerCase(); vb = String(vb).toLowerCase();
+        return va < vb ? -1*mult : va > vb ? 1*mult : 0;
+      }
+      if (field === 'dateAdded' || field === 'dateRead') {
+        va = va === -Infinity || va === Infinity ? va : String(va);
+        vb = vb === -Infinity || vb === Infinity ? vb : String(vb);
+        if (typeof va === 'string' && typeof vb === 'string') return va < vb ? -1*mult : va > vb ? 1*mult : 0;
+        if (typeof va === 'number') return mult;
+        if (typeof vb === 'number') return -mult;
+        return 0;
+      }
+      return (va - vb) * mult;
+    });
+    return filtered;
+  }
+
+  // --- Cover URL ---
+  function getCoverUrl(book, size) {
+    size = size || 'M';
+    const isbn = book.isbn13 || book.isbn;
+    if (!isbn) return null;
+    return `https://covers.openlibrary.org/b/isbn/${isbn}-${size}.jpg`;
+  }
+
+  // --- Stars ---
+  function starsHtml(rating, max) {
+    max = max || 5;
+    if (!rating) return '';
+    let s = '';
+    for (let i = 1; i <= max; i++) {
+      s += i <= rating ? '★' : '<span class="empty">★</span>';
+    }
+    return s;
+  }
+
+  // --- Render Grid ---
+  function renderGrid(filtered) {
+    const container = document.getElementById('libraryContainer');
+    container.className = 'library-grid';
+    container.innerHTML = filtered.map((book, i) => {
+      const coverUrl = getCoverUrl(book);
+      const shelfColor = book.shelf === 'read' ? 'var(--shelf-read)' :
+                         book.shelf === 'currently-reading' ? 'var(--shelf-reading)' : 'var(--shelf-toread)';
+      const ratingHtml = book.myRating ? starsHtml(book.myRating) : '';
+      return `
+        <div class="book-card" onclick="openDetail(${i})" data-idx="${i}">
+          <div class="book-cover" id="cover-${i}">
+            ${coverUrl
+              ? `<img src="${coverUrl}" alt="" loading="lazy" onerror="this.parentElement.innerHTML=makeFallback(${i})">`
+              : `<div class="fallback"><div class="fb-title">${esc(book.title)}</div><div class="fb-author">${esc(book.author)}</div></div>`
+            }
+          </div>
+          <div class="shelf-badge" style="background:${shelfColor}"></div>
+          ${ratingHtml ? `<div class="rating-badge">${ratingHtml}</div>` : ''}
+          <div class="card-title" title="${esc(book.title)}">${esc(book.title)}</div>
+          <div class="card-author">${esc(book.author)}</div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  // --- Render List ---
+  function renderList(filtered) {
+    const container = document.getElementById('libraryContainer');
+    container.className = 'library-list';
+    container.innerHTML = filtered.map((book, i) => {
+      const coverUrl = getCoverUrl(book, 'S');
+      const shelfColor = book.shelf === 'read' ? 'var(--shelf-read)' :
+                         book.shelf === 'currently-reading' ? 'var(--shelf-reading)' : 'var(--shelf-toread)';
+      return `
+        <div class="list-item" onclick="openDetail(${i})" data-idx="${i}">
+          <div class="li-cover">
+            ${coverUrl ? `<img src="${coverUrl}" loading="lazy" onerror="this.src='';this.style.display='none'">` : ''}
+          </div>
+          <div class="li-info">
+            <div class="li-title">${esc(book.title)}</div>
+            <div class="li-author">${esc(book.author)}</div>
+          </div>
+          <div class="li-shelf" style="color:${shelfColor}">${book.shelf.replace(/-/g,' ')}</div>
+          <div class="li-rating">${book.myRating ? starsHtml(book.myRating) : '—'}</div>
+          <div class="li-pages">${book.pages || '—'} p</div>
+          <div class="li-date">${book.dateAdded || ''}</div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  // --- Master Render ---
+  let lastFiltered = [];
+  function render() {
+    const filtered = getFilteredBooks();
+    lastFiltered = filtered;
+    document.getElementById('resultsCount').textContent = `Showing ${filtered.length} of ${books.length} books`;
+    if (filtered.length === 0) {
+      const container = document.getElementById('libraryContainer');
+      container.className = '';
+      container.innerHTML = '<div class="empty-state"><div class="emoji">📖</div><p>No books match your filters.</p></div>';
+      return;
+    }
+    if (currentView === 'grid') renderGrid(filtered);
+    else renderList(filtered);
+  }
+
+  // --- Detail Panel ---
+  window.openDetail = function(idx) {
+    const book = lastFiltered[idx];
+    if (!book) return;
+    const coverUrl = getCoverUrl(book, 'L');
+    const allAuthors = [book.author, book.additionalAuthors].filter(Boolean).join(', ');
+    const tags = [];
+    if (book.pages) tags.push({label:'Pages', value:book.pages});
+    if (book.binding) tags.push({label:'Format', value:book.binding});
+    if (book.publisher) tags.push({label:'Publisher', value:book.publisher});
+    if (book.yearOriginal) tags.push({label:'Published', value:book.yearOriginal});
+    if (book.yearPublished && book.yearPublished !== book.yearOriginal) tags.push({label:'Edition', value:book.yearPublished});
+
+    document.getElementById('detailContent').innerHTML = `
+      <div class="detail-cover">
+        ${coverUrl
+          ? `<img src="${coverUrl}" alt="${esc(book.title)}" onerror="this.parentElement.innerHTML='<div class=\\'fallback\\'><div class=\\'fb-title\\'>${esc(book.title)}</div><div class=\\'fb-author\\'>${esc(book.author)}</div></div>'">`
+          : `<div class="fallback"><div class="fb-title">${esc(book.title)}</div><div class="fb-author">${esc(book.author)}</div></div>`
+        }
+      </div>
+      <div class="detail-body">
+        <h2>${esc(book.title)}</h2>
+        <div class="d-author">${esc(allAuthors)}</div>
+        ${book.myRating ? `<div class="d-rating"><div class="stars">${starsHtml(book.myRating)}</div></div>` : ''}
+        <div class="d-meta">
+          ${tags.map(t => `<span class="d-tag"><span class="label">${t.label}:</span> ${esc(String(t.value))}</span>`).join('')}
+        </div>
+        <div class="d-section">
+          <div class="d-label">Shelves</div>
+          <div class="d-shelves">
+            <span class="d-shelf ${book.shelf}">${book.shelf.replace(/-/g,' ')}</span>
+            ${book.shelves.filter(s => s !== book.shelf).map(s => `<span class="d-shelf">${s.replace(/-/g,' ')}</span>`).join('')}
+          </div>
+        </div>
+        ${book.dateRead ? `<div class="d-section"><div class="d-label">Date Read</div><div class="d-value">${book.dateRead}</div></div>` : ''}
+        ${book.dateAdded ? `<div class="d-section"><div class="d-label">Date Added</div><div class="d-value">${book.dateAdded}</div></div>` : ''}
+        ${book.review ? `<div class="d-section"><div class="d-label">My Review</div><div class="d-value">${esc(book.review)}</div></div>` : ''}
+        ${book.isbn || book.isbn13 ? `<div class="d-section"><div class="d-label">ISBN</div><div class="d-value">${book.isbn13 || book.isbn}</div></div>` : ''}
+        <a class="gr-link" href="https://www.goodreads.com/book/show/${book.id}" target="_blank" rel="noopener">View on Goodreads →</a>
+      </div>
+    `;
+    document.getElementById('overlay').classList.add('open');
+    document.getElementById('detailPanel').classList.add('open');
+    document.body.style.overflow = 'hidden';
+  };
+
+  window.closeDetail = function() {
+    document.getElementById('overlay').classList.remove('open');
+    document.getElementById('detailPanel').classList.remove('open');
+    document.body.style.overflow = '';
+  };
+
+  // --- Fallback cover ---
+  window.makeFallback = function(idx) {
+    const book = lastFiltered[idx];
+    return `<div class="fallback"><div class="fb-title">${esc(book.title)}</div><div class="fb-author">${esc(book.author)}</div></div>`;
+  };
+
+  // --- View Toggle ---
+  window.setView = function(v) {
+    currentView = v;
+    document.getElementById('gridBtn').classList.toggle('active', v==='grid');
+    document.getElementById('listBtn').classList.toggle('active', v==='list');
+    render();
+  };
+
+  // --- Shelf Filter ---
+  window.filterShelf = function(shelf) {
+    currentShelf = shelf;
+    renderShelfFilters();
+    render();
+  };
+
+  // --- Escape HTML ---
+  function esc(str) {
+    if (!str) return '';
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+  }
+
+  // --- Events ---
+  document.getElementById('searchInput').addEventListener('input', function(e) {
+    searchQuery = e.target.value.trim();
+    render();
+  });
+  document.getElementById('sortSelect').addEventListener('change', function(e) {
+    currentSort = e.target.value;
+    render();
+  });
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeDetail();
+  });
+
+  // --- Init ---
+  renderStats();
+  renderShelfFilters();
+  render();
+
+})();
+</script>
+</body>
+</html>

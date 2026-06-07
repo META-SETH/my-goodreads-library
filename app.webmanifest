@@ -1,0 +1,10 @@
+{
+  "name": "My Goodreads Library",
+  "short_name": "GR Library",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#0f0f1a",
+  "theme_color": "#1a1a2e",
+  "description": "A browsable gallery of my Goodreads book collection.",
+  "icons": []
+}
