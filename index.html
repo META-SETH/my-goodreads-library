@@ -468,7 +468,7 @@ select:focus,.btn:focus{outline:none;border-color:var(--accent)}
     size = size || 'M';
     const isbn = book.isbn13 || book.isbn;
     if (!isbn) return null;
-    return `https://covers.openlibrary.org/b/isbn/${isbn}-${size}.jpg`;
+    return `https://covers.openlibrary.org/b/isbn/${isbn}-${size}.jpg?default=false`;
   }
 
   // --- Stars ---
@@ -495,7 +495,7 @@ select:focus,.btn:focus{outline:none;border-color:var(--accent)}
         <div class="book-card" onclick="openDetail(${i})" data-idx="${i}">
           <div class="book-cover" id="cover-${i}">
             ${coverUrl
-              ? `<img src="${coverUrl}" alt="" loading="lazy" onerror="this.parentElement.innerHTML=makeFallback(${i})">`
+              ? `<img src="${coverUrl}" alt="" loading="lazy" onload="if(this.naturalWidth<=2||this.naturalHeight<=2){this.parentElement.innerHTML=makeFallback(${i})}" onerror="this.parentElement.innerHTML=makeFallback(${i})">`
               : `<div class="fallback"><div class="fb-title">${esc(book.title)}</div><div class="fb-author">${esc(book.author)}</div></div>`
             }
           </div>
@@ -519,7 +519,7 @@ select:focus,.btn:focus{outline:none;border-color:var(--accent)}
       return `
         <div class="list-item" onclick="openDetail(${i})" data-idx="${i}">
           <div class="li-cover">
-            ${coverUrl ? `<img src="${coverUrl}" loading="lazy" onerror="this.src='';this.style.display='none'">` : ''}
+            ${coverUrl ? `<img src="${coverUrl}" loading="lazy" onload="if(this.naturalWidth<=2||this.naturalHeight<=2){this.style.display='none'}" onerror="this.src='';this.style.display='none'">` : ''}
           </div>
           <div class="li-info">
             <div class="li-title">${esc(book.title)}</div>
@@ -566,7 +566,7 @@ select:focus,.btn:focus{outline:none;border-color:var(--accent)}
     document.getElementById('detailContent').innerHTML = `
       <div class="detail-cover">
         ${coverUrl
-          ? `<img src="${coverUrl}" alt="${esc(book.title)}" onerror="this.parentElement.innerHTML='<div class=\\'fallback\\'><div class=\\'fb-title\\'>${esc(book.title)}</div><div class=\\'fb-author\\'>${esc(book.author)}</div></div>'">`
+          ? `<img src="${coverUrl}" alt="${esc(book.title)}" onload="if(this.naturalWidth<=2||this.naturalHeight<=2){this.parentElement.innerHTML='<div class=\\'fallback\\'><div class=\\'fb-title\\'>${esc(book.title)}</div><div class=\\'fb-author\\'>${esc(book.author)}</div></div>'}" onerror="this.parentElement.innerHTML='<div class=\\'fallback\\'><div class=\\'fb-title\\'>${esc(book.title)}</div><div class=\\'fb-author\\'>${esc(book.author)}</div></div>'">`
           : `<div class="fallback"><div class="fb-title">${esc(book.title)}</div><div class="fb-author">${esc(book.author)}</div></div>`
         }
       </div>
