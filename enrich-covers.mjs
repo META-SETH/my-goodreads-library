@@ -67,10 +67,45 @@ async function tryLongitood(book) {
     api = `https://bookcover.longitood.com/bookcover?book_title=${t}&author_name=${a}`;
   }
   try {
-    const res = await fetch(api, { signal: AbortSignal.timeout(15000) });
+    const res = await fetch(api, { signal: AbortSignal.timeout(4000) });
     if (!res.ok) return null;
     const data = await res.json();
     return data && data.url ? data.url : null;
+  } catch { return null; }
+}
+
+// Guard: is this book clean enough to risk a FUZZY title+author match?
+// Title search returns *a* cover for *a* matching edition — usually right, but
+// for junk metadata it can be confidently WRONG, which is worse than a blank.
+// So we skip unknown authors, initials-only names, bracket-mangled import
+// titles, and multi-book bundles.
+function isTitleAuthorSafe(book) {
+  const author = (book.author || '').trim();
+  const title = (book.title || '').trim();
+  if (!author || !title) return false;
+  if (/^unknown/i.test(author)) return false;
+  if (author.replace(/[^a-z]/gi, '').length <= 3) return false;   // "P.T."
+  if (/^[\[\(]/.test(title)) return false;                         // "[Selected Writings]..."
+  if (/manuscripts|collection|box set|boxed set/i.test(title)) return false;
+  return true;
+}
+
+// Source 4: Open Library SEARCH by title+author (KEYLESS). This is how we reach
+// the ~156 books that have NO ISBN. The search API returns a numeric cover_i,
+// which we turn into an image URL via the /b/id/ cover endpoint. Guarded by
+// isTitleAuthorSafe so we don't fetch a wrong cover for junk-metadata books.
+async function tryOpenLibrarySearch(book) {
+  if (!isTitleAuthorSafe(book)) return null;
+  const t = encodeURIComponent(book.title);
+  const a = encodeURIComponent(book.author);
+  const api = `https://openlibrary.org/search.json?title=${t}&author=${a}&limit=1&fields=cover_i`;
+  try {
+    const res = await fetch(api, { signal: AbortSignal.timeout(15000) });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const cover = data?.docs?.[0]?.cover_i;
+    if (!cover) return null;
+    return `https://covers.openlibrary.org/b/id/${cover}-M.jpg`;
   } catch { return null; }
 }
 
@@ -82,6 +117,10 @@ async function resolveCover(book) {
     const gd = await tryGoogleDynamic(isbn);
     if (gd) return { url: gd, source: 'google-dynamic' };
   }
+  // Title+author search reaches the no-ISBN books (and ISBN books OL/Google lack).
+  const ols = await tryOpenLibrarySearch(book);
+  if (ols) return { url: ols, source: 'openlibrary-search' };
+  // longitood last (it's been down; harmless when it is).
   const lt = await tryLongitood(book);
   if (lt) return { url: lt, source: 'longitood' };
   return null;
@@ -93,7 +132,7 @@ async function main() {
   const books = JSON.parse(jsonText);
   console.log(`Loaded ${books.length} books.`);
 
-  const bySource = { openlibrary: 0, 'google-dynamic': 0, longitood: 0 };
+  const bySource = { openlibrary: 0, 'google-dynamic': 0, 'openlibrary-search': 0, longitood: 0 };
   let filled = 0, skipped = 0, missed = 0;
   for (let i = 0; i < books.length; i++) {
     const book = books[i];
@@ -119,6 +158,7 @@ async function main() {
   console.log(`  Filled ${filled} new covers:`);
   console.log(`    Open Library:     ${bySource.openlibrary}`);
   console.log(`    Google (keyless): ${bySource['google-dynamic']}`);
+  console.log(`    OL title search:  ${bySource['openlibrary-search']}`);
   console.log(`    longitood:        ${bySource.longitood}`);
   console.log(`  Skipped (already had cover): ${skipped}`);
   console.log(`  Still unfound: ${missed}`);
