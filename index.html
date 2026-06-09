@@ -473,10 +473,14 @@ select:focus,.btn:focus{outline:none;border-color:var(--accent)}
     return book.isbn13 || book.isbn || null;
   }
 
-  // Synchronous primary source — used as the initial <img src>.
+  // Synchronous cover URL for a book.
+  // 1. If the build-time enrich script baked a `coverUrl` into the data, use it
+  //    directly — no live API call, works for books Open Library lacks.
+  // 2. Otherwise fall back to a live Open Library lookup by ISBN.
   // ?default=false makes OL return a real 404 (not a blank 1x1) when it has no
   // cover, which is what lets the <img> onerror handler fire reliably.
   function openLibraryUrl(book, size) {
+    if (book.coverUrl) return book.coverUrl;
     const isbn = getIsbn(book);
     if (!isbn) return null;
     return `https://covers.openlibrary.org/b/isbn/${isbn}-${size || 'M'}.jpg?default=false`;
