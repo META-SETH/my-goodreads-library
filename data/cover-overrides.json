@@ -1,0 +1,4 @@
+{
+  "_readme": "Hand-curated cover URLs, keyed by Goodreads book id. enrich-covers.mjs applies these FIRST, before any API lookup. Use for books no public catalog has. URLs may be absolute (https://...) or repo-relative (covers/223991638.jpg) if you commit the image yourself. Keys starting with _ are ignored.",
+  "9649767": "https://images-na.ssl-images-amazon.com/images/P/6130464126.01.LZZZZZZZ.jpg"
+}
