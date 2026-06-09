@@ -378,7 +378,6 @@ select:focus,.btn:focus{outline:none;border-color:var(--accent)}
   let currentShelf = 'all';
   let currentSort = 'dateAdded-desc';
   let searchQuery = '';
-  const coverCache = {};
 
   // --- Stats ---
   function renderStats() {
@@ -463,13 +462,45 @@ select:focus,.btn:focus{outline:none;border-color:var(--accent)}
     return filtered;
   }
 
-  // --- Cover URL ---
-  function getCoverUrl(book, size) {
-    size = size || 'M';
-    const isbn = book.isbn13 || book.isbn;
-    if (!isbn) return null;
-    return `https://covers.openlibrary.org/b/isbn/${isbn}-${size}.jpg?default=false`;
+  // --- Cover sourcing (two-source fallback: Open Library → Google Books) ---
+  //
+  // Open Library is fast and gives us a direct image URL we can drop straight
+  // into <img src>. Google Books has no direct-by-ISBN image URL — you must
+  // query its JSON API, read volumeInfo.imageLinks, and use the URL it hands
+  // back. So OL is our synchronous first try; Google Books is the async rescue.
+
+  function getIsbn(book) {
+    return book.isbn13 || book.isbn || null;
   }
+
+  // Synchronous primary source — used as the initial <img src>.
+  // ?default=false makes OL return a real 404 (not a blank 1x1) when it has no
+  // cover, which is what lets the <img> onerror handler fire reliably.
+  function openLibraryUrl(book, size) {
+    const isbn = getIsbn(book);
+    if (!isbn) return null;
+    return `https://covers.openlibrary.org/b/isbn/${isbn}-${size || 'M'}.jpg?default=false`;
+  }
+  // Kept for any old call sites; behaves exactly as before.
+  function getCoverUrl(book, size) { return openLibraryUrl(book, size); }
+
+  // --- Failure helper ---
+  // Open Library is our only cover source. When an <img> 404s or loads a blank
+  // 1x1, these inline handlers call failCover to show a clean title/author card
+  // (grid/detail) or hide the thumbnail (list). It MUST live on window: inline
+  // on* attributes run in global scope and can't see closure-scoped functions.
+  //   imgEl – the <img> element (passed as `this` from inline handlers)
+  //   idx   – its index into lastFiltered, for makeFallback()
+  //   mode  – 'card' (swap container to text fallback) | 'thumb' (hide the img)
+  window.failCover = function(imgEl, idx, mode) {
+    if (mode === 'thumb') {
+      imgEl.src = '';
+      imgEl.style.display = 'none';
+    } else {
+      imgEl.parentElement.innerHTML = window.makeFallback(idx);
+    }
+  };
+
 
   // --- Stars ---
   function starsHtml(rating, max) {
@@ -495,7 +526,7 @@ select:focus,.btn:focus{outline:none;border-color:var(--accent)}
         <div class="book-card" onclick="openDetail(${i})" data-idx="${i}">
           <div class="book-cover" id="cover-${i}">
             ${coverUrl
-              ? `<img src="${coverUrl}" alt="" loading="lazy" onload="if(this.naturalWidth<=2||this.naturalHeight<=2){this.parentElement.innerHTML=makeFallback(${i})}" onerror="this.parentElement.innerHTML=makeFallback(${i})">`
+              ? `<img src="${coverUrl}" alt="" loading="lazy" onload="if(this.naturalWidth<=2||this.naturalHeight<=2){failCover(this,${i},'card')}" onerror="failCover(this,${i},'card')">`
               : `<div class="fallback"><div class="fb-title">${esc(book.title)}</div><div class="fb-author">${esc(book.author)}</div></div>`
             }
           </div>
@@ -519,7 +550,7 @@ select:focus,.btn:focus{outline:none;border-color:var(--accent)}
       return `
         <div class="list-item" onclick="openDetail(${i})" data-idx="${i}">
           <div class="li-cover">
-            ${coverUrl ? `<img src="${coverUrl}" loading="lazy" onload="if(this.naturalWidth<=2||this.naturalHeight<=2){this.style.display='none'}" onerror="this.src='';this.style.display='none'">` : ''}
+            ${coverUrl ? `<img src="${coverUrl}" loading="lazy" onload="if(this.naturalWidth<=2||this.naturalHeight<=2){failCover(this,${i},'thumb')}" onerror="failCover(this,${i},'thumb')">` : ''}
           </div>
           <div class="li-info">
             <div class="li-title">${esc(book.title)}</div>
@@ -566,7 +597,7 @@ select:focus,.btn:focus{outline:none;border-color:var(--accent)}
     document.getElementById('detailContent').innerHTML = `
       <div class="detail-cover">
         ${coverUrl
-          ? `<img src="${coverUrl}" alt="${esc(book.title)}" onload="if(this.naturalWidth<=2||this.naturalHeight<=2){this.parentElement.innerHTML='<div class=\\'fallback\\'><div class=\\'fb-title\\'>${esc(book.title)}</div><div class=\\'fb-author\\'>${esc(book.author)}</div></div>'}" onerror="this.parentElement.innerHTML='<div class=\\'fallback\\'><div class=\\'fb-title\\'>${esc(book.title)}</div><div class=\\'fb-author\\'>${esc(book.author)}</div></div>'">`
+          ? `<img src="${coverUrl}" alt="${esc(book.title)}" onload="if(this.naturalWidth<=2||this.naturalHeight<=2){failCover(this,${idx},'card')}" onerror="failCover(this,${idx},'card')">`
           : `<div class="fallback"><div class="fb-title">${esc(book.title)}</div><div class="fb-author">${esc(book.author)}</div></div>`
         }
       </div>
